@@ -1,39 +1,50 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Fabric;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace EchoServer
 {
-    internal static class Program
-    {
-        /// <summary>
-        /// This is the entry point of the service host process.
-        /// </summary>
-        private static void Main()
-        {
-            try
-            {
-                // The ServiceManifest.XML file defines one or more service type names.
-                // Registering a service maps a service type name to a .NET type.
-                // When Service Fabric creates an instance of this service type,
-                // an instance of the class is created in this host process.
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			Task main = MainAsync(args);
+			main.Wait();
+		}
 
-                ServiceRuntime.RegisterServiceAsync("EchoServerType",
-                    context => new EchoServerService(context)).GetAwaiter().GetResult();
+		static async Task MainAsync(string[] args)
+		{
+			Console.WriteLine("Starting server");
 
-                ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(EchoServerService).Name);
+			CancellationToken cancellationToken = new CancellationTokenSource().Token;
 
-                // Prevents this host process from terminating so services keep running.
-                Thread.Sleep(Timeout.Infinite);
-            }
-            catch (Exception e)
-            {
-                ServiceEventSource.Current.ServiceHostInitializationFailed(e.ToString());
-                throw;
-            }
-        }
-    }
+			TcpListener listener = new TcpListener(IPAddress.IPv6Loopback, 8080);
+
+			listener.Start();
+
+			TcpClient client = await listener.AcceptTcpClientAsync();
+			client.ReceiveTimeout = 30;
+			NetworkStream stream = client.GetStream();
+			StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
+			StreamReader reader = new StreamReader(stream, Encoding.ASCII);
+
+			while (true)
+			{
+				string line = await reader.ReadLineAsync();
+				Console.WriteLine($"Received {line}");
+				await writer.WriteLineAsync(line);
+
+				if (cancellationToken.IsCancellationRequested)
+					break;
+			}
+
+			listener.Stop();
+		}
+	}
 }
