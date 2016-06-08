@@ -22,29 +22,33 @@ namespace EchoServer
 		{
 			Console.WriteLine("Starting server");
 
-			CancellationToken cancellationToken = new CancellationTokenSource().Token;
+			TcpListener server = new TcpListener(IPAddress.IPv6Loopback, 8080);
+			Console.WriteLine("Starting listener");
+			server.Start();
 
-			TcpListener listener = new TcpListener(IPAddress.IPv6Loopback, 8080);
+			while (true)
+			{
+				TcpClient client = await server.AcceptTcpClientAsync();
 
-			listener.Start();
+				Task.Factory.StartNew(() => HandleConnection(client));
+			}
 
-			TcpClient client = await listener.AcceptTcpClientAsync();
+			server.Stop();
+		}
+
+		static async Task HandleConnection(TcpClient client)
+		{
+			Console.WriteLine($"New connection from {client.Client.RemoteEndPoint}");
 			client.ReceiveTimeout = 30;
+			client.SendTimeout = 30;
+
 			NetworkStream stream = client.GetStream();
 			StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
 			StreamReader reader = new StreamReader(stream, Encoding.ASCII);
 
-			while (true)
-			{
-				string line = await reader.ReadLineAsync();
-				Console.WriteLine($"Received {line}");
-				await writer.WriteLineAsync(line);
-
-				if (cancellationToken.IsCancellationRequested)
-					break;
-			}
-
-			listener.Stop();
+			string line = await reader.ReadLineAsync();
+			Console.WriteLine($"Received {line}");
+			await writer.WriteLineAsync(line);
 		}
 	}
 }
