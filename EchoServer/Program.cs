@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace EchoServer
@@ -21,19 +18,57 @@ namespace EchoServer
 		static async Task MainAsync(string[] args)
 		{
 			Console.WriteLine("Starting server");
+#pragma warning disable CS4014
+			StartServer();
+#pragma warning restore CS4014
+			AcceptCommands();
+		}
 
-			TcpListener server = new TcpListener(IPAddress.IPv6Loopback, 8080);
-			Console.WriteLine("Starting listener");
-			server.Start();
-
-			while (true)
+		static void AcceptCommands()
+		{
+			string line = null;
+			do
 			{
-				TcpClient client = await server.AcceptTcpClientAsync();
+				Console.WriteLine("Awaiting commands");
+				line = Console.ReadLine();
+				Console.WriteLine($"Command: {line}");
+			} while (line != "exit");
+		}
 
-				Task.Factory.StartNew(() => HandleConnection(client));
+		static async Task StartServer()
+		{
+			TcpListener server = null;
+
+			try
+			{
+				server = new TcpListener(IPAddress.IPv6Loopback, 8080);
+
+				Console.WriteLine("Starting listener");
+				server.Start();
+
+				while (true)
+				{
+					TcpClient client = await server.AcceptTcpClientAsync();
+
+#pragma warning disable CS4014
+					Task.Factory.StartNew(() => HandleConnection(client));
+#pragma warning restore CS4014
+				}
 			}
-
-			server.Stop();
+			finally
+			{
+				if (server != null)
+				{
+					try
+					{
+						server.Stop();
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"Failed to stop server{Environment.NewLine}{ex}");
+					}
+				}
+			}
 		}
 
 		static async Task HandleConnection(TcpClient client)
