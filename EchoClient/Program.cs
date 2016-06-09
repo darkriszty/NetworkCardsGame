@@ -1,15 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EchoClient
 {
 	class Program
 	{
+		const int MAX_WRITE_RETRY = 3;
+		const int WRITE_RETRY_DELAY_SECONDS = 3;
+
 		static void Main(string[] args)
 		{
 			Task main = MainAsync(args);
@@ -18,22 +18,55 @@ namespace EchoClient
 
 		static async Task MainAsync(string[] args)
 		{
-			TcpClient client = new TcpClient("::1", 8080);
-			NetworkStream stream = client.GetStream();
-
-			StreamReader reader = new StreamReader(stream);
-			StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
-
-			while (true)
+			using (TcpClient client = new TcpClient("::1", 8080))
 			{
-				Console.WriteLine("What to send?");
-				string line = Console.ReadLine();
-				await writer.WriteLineAsync(line);
-				string response = await reader.ReadLineAsync();
-				Console.WriteLine($"Response from server {response}");
-			}
+				using (NetworkStream stream = client.GetStream())
+				{
+					using (StreamReader reader = new StreamReader(stream))
+					{
+						using (StreamWriter writer = new StreamWriter(stream) { AutoFlush = true })
+						{
+							while (true)
+							{
+								Console.WriteLine("What to send?");
+								string line = Console.ReadLine();
 
-			client.Close();
+								int writeTry = 0;
+								bool writtenSuccessfully = false;
+								while (!writtenSuccessfully && writeTry < MAX_WRITE_RETRY)
+								{
+									try
+									{
+										writeTry++;
+										await writer.WriteLineAsync(line);
+										writtenSuccessfully = true;
+									}
+									catch (Exception ex)
+									{
+										Console.WriteLine($"Failed to send data to server, try {writeTry} / {MAX_WRITE_RETRY}");
+										if (!writtenSuccessfully && writeTry == MAX_WRITE_RETRY)
+										{
+											Console.WriteLine($"Write retry reach, please check your connectivity with the server and try again. Error details: {Environment.NewLine}{ex.Message}");
+										}
+										else
+										{
+											await Task.Delay(WRITE_RETRY_DELAY_SECONDS * 1000);
+										}
+									}
+								}
+
+								if (!writtenSuccessfully)
+								{
+									continue;
+								}
+
+								string response = await reader.ReadLineAsync();
+								Console.WriteLine($"Response from server {response}");
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
