@@ -1,9 +1,7 @@
 ﻿using Shared.TcpCommunication;
 using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EchoServer
@@ -11,6 +9,7 @@ namespace EchoServer
 	class Program
 	{
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
+		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, Constants.ReadRetryDelaySeconds);
 
 		static void Main(string[] args)
 		{
@@ -84,14 +83,17 @@ namespace EchoServer
 			{
 				using (NetworkStream stream = client.GetStream())
 				{
-					using (StreamReader reader = new StreamReader(stream, Encoding.ASCII))
+					while (true)
 					{
-						while (true)
-						{
-							string line = await reader.ReadLineAsync();
-							Console.WriteLine($"Received {line}");
-							await _writer.WriteLineAsync(stream, line);
-						}
+						// read the data from the client
+						string line = await _reader.ReadLineAsync(stream);
+
+						// if the data was not read during the retry process then close this client
+						if (line == null)
+							break;
+
+						Console.WriteLine($"Received {line}");
+						await _writer.WriteLineAsync(stream, line);
 					}
 				}
 			}

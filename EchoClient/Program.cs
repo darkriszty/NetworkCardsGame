@@ -1,6 +1,5 @@
 ﻿using Shared.TcpCommunication;
 using System;
-using System.IO;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
@@ -9,6 +8,7 @@ namespace EchoClient
 	class Program
 	{
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
+		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, Constants.ReadRetryDelaySeconds);
 
 		static void Main(string[] args)
 		{
@@ -22,21 +22,22 @@ namespace EchoClient
 			{
 				using (NetworkStream stream = client.GetStream())
 				{
-					using (StreamReader reader = new StreamReader(stream))
+					while (true)
 					{
-						while (true)
-						{
-							Console.WriteLine("What to send?");
-							string line = Console.ReadLine();
+						// read the data to send to the server
+						Console.WriteLine("What to send?");
+						string line = Console.ReadLine();
 
-							if (!await _writer.WriteLineAsync(stream, line))
-							{
-								continue;
-							}
+						// send the text to the server
+						if (!await _writer.WriteLineAsync(stream, line))
+							continue;
 
-							string response = await reader.ReadLineAsync();
-							Console.WriteLine($"Response from server {response}");
-						}
+						// read the response of the server
+						string response = await _reader.ReadLineAsync(stream);
+						if (response == null)
+							continue;
+
+						Console.WriteLine($"Response from server {response}");
 					}
 				}
 			}

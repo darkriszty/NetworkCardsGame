@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="TcpCommunication\Constants.cs" />
+    <Compile Include="TcpCommunication\NetworkStreamReader.cs" />
     <Compile Include="TcpCommunication\NetworkStreamWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
