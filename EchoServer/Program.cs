@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Shared.TcpCommunication;
+using System;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -9,6 +10,8 @@ namespace EchoServer
 {
 	class Program
 	{
+		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
+
 		static void Main(string[] args)
 		{
 			Task main = MainAsync(args);
@@ -81,16 +84,13 @@ namespace EchoServer
 			{
 				using (NetworkStream stream = client.GetStream())
 				{
-					using (StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true })
+					using (StreamReader reader = new StreamReader(stream, Encoding.ASCII))
 					{
-						using (StreamReader reader = new StreamReader(stream, Encoding.ASCII))
+						while (true)
 						{
-							while (true)
-							{
-								string line = await reader.ReadLineAsync();
-								Console.WriteLine($"Received {line}");
-								await writer.WriteLineAsync(line);
-							}
+							string line = await reader.ReadLineAsync();
+							Console.WriteLine($"Received {line}");
+							await _writer.WriteLineAsync(stream, line);
 						}
 					}
 				}

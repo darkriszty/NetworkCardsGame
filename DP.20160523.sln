@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EchoServer", "EchoServer\Ec
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EchoClient", "EchoClient\EchoClient.csproj", "{479BA26F-EE40-42D0-A556-8971081B0D97}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{D6DD8B1F-399B-4DE7-B8AD-FF87E8F5EB0C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{479BA26F-EE40-42D0-A556-8971081B0D97}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479BA26F-EE40-42D0-A556-8971081B0D97}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479BA26F-EE40-42D0-A556-8971081B0D97}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6DD8B1F-399B-4DE7-B8AD-FF87E8F5EB0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6DD8B1F-399B-4DE7-B8AD-FF87E8F5EB0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6DD8B1F-399B-4DE7-B8AD-FF87E8F5EB0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6DD8B1F-399B-4DE7-B8AD-FF87E8F5EB0C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
