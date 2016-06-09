@@ -46,9 +46,12 @@ namespace EchoServer
 			StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
 			StreamReader reader = new StreamReader(stream, Encoding.ASCII);
 
-			string line = await reader.ReadLineAsync();
-			Console.WriteLine($"Received {line}");
-			await writer.WriteLineAsync(line);
+			while (true)
+			{
+				string line = await reader.ReadLineAsync();
+				Console.WriteLine($"Received {line}");
+				await writer.WriteLineAsync(line);
+			}
 		}
 	}
 }
