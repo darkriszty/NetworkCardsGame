@@ -42,15 +42,28 @@ namespace EchoServer
 			client.ReceiveTimeout = 30;
 			client.SendTimeout = 30;
 
-			NetworkStream stream = client.GetStream();
-			StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
-			StreamReader reader = new StreamReader(stream, Encoding.ASCII);
-
-			while (true)
+			try
 			{
-				string line = await reader.ReadLineAsync();
-				Console.WriteLine($"Received {line}");
-				await writer.WriteLineAsync(line);
+				using (NetworkStream stream = client.GetStream())
+				{
+					using (StreamWriter writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true })
+					{
+						using (StreamReader reader = new StreamReader(stream, Encoding.ASCII))
+						{
+							while (true)
+							{
+								string line = await reader.ReadLineAsync();
+								Console.WriteLine($"Received {line}");
+								await writer.WriteLineAsync(line);
+							}
+						}
+					}
+				}
+			}
+			finally
+			{
+				Console.WriteLine("Client connection closed");
+				client.Close();
 			}
 		}
 	}
