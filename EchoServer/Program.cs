@@ -1,5 +1,7 @@
 ﻿using Shared.TcpCommunication;
+using Shared.TcpProtocol.v1;
 using System;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -9,7 +11,8 @@ namespace EchoServer
 	class Program
 	{
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
-		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, Constants.ReadRetryDelaySeconds);
+		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, 1);
+		private static ConcurrentDictionary<TcpClient, string> _clients = new ConcurrentDictionary<TcpClient, string>(); //TcpClient - username
 
 		static void Main(string[] args)
 		{
@@ -52,6 +55,8 @@ namespace EchoServer
 				{
 					TcpClient client = await server.AcceptTcpClientAsync();
 
+					_clients.AddOrUpdate(client, string.Empty, (key, oldValue) => string.Empty);
+
 #pragma warning disable CS4014
 					Task.Factory.StartNew(() => HandleConnection(client));
 #pragma warning restore CS4014
@@ -86,13 +91,18 @@ namespace EchoServer
 					while (true)
 					{
 						// read the data from the client
-						string line = await _reader.ReadLineAsync(stream);
+						string line = await _reader.ReadLineAsync(stream, false);
 
 						// if the data was not read during the retry process then close this client
 						if (line == null)
 							break;
 
-						Console.WriteLine($"Received {line}");
+						ProcessPossibleCommand(client, line);
+
+						string userName = _clients[client];
+						Console.WriteLine($"{userName}: {line}");
+
+						// echo back
 						await _writer.WriteLineAsync(stream, line);
 					}
 				}
@@ -101,6 +111,18 @@ namespace EchoServer
 			{
 				Console.WriteLine("Client connection closed");
 				client.Close();
+				string userName;
+				_clients.TryRemove(client, out userName);
+				Console.WriteLine($"{userName} disconnected");
+			}
+		}
+
+		private static void ProcessPossibleCommand(TcpClient client, string line)
+		{
+			if (line.StartsWith(CommunicationFormats.SetUserName))
+			{
+				string userName = line.Substring(CommunicationFormats.SetUserName.Length);
+				_clients.AddOrUpdate(client, userName, (k, v) => userName);
 			}
 		}
 	}

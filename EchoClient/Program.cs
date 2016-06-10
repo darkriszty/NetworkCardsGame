@@ -1,4 +1,5 @@
 ﻿using Shared.TcpCommunication;
+using Shared.TcpProtocol.v1;
 using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -22,6 +23,15 @@ namespace EchoClient
 			{
 				using (NetworkStream stream = client.GetStream())
 				{
+					Console.WriteLine("Username:");
+					string userName = Console.ReadLine();
+					string userNameCommand = string.Concat(CommunicationFormats.SetUserName, userName);
+					if (!await _writer.WriteLineAsync(stream, userNameCommand))
+					{
+						Console.WriteLine("Failed to send username to server, stopping.");
+						return;
+					}
+
 					while (true)
 					{
 						// read the data to send to the server

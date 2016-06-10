@@ -16,7 +16,7 @@ namespace Shared.TcpCommunication
 			_readRetryDelaySeconds = readRetryDelaySeconds;
 		}
 
-		public async Task<string> ReadLineAsync(NetworkStream stream)
+		public async Task<string> ReadLineAsync(NetworkStream stream, bool verbose = true)
 		{
 			string result = null;
 			StreamReader reader = new StreamReader(stream);
@@ -33,10 +33,12 @@ namespace Shared.TcpCommunication
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine($"Failed to read data from stream, try {readTry} / {_maxReadRetry}");
+					if (verbose)
+						Console.WriteLine($"Failed to read data from stream, try {readTry} / {_maxReadRetry}");
 					if (!readSuccessfully && readTry == _maxReadRetry)
 					{
-						Console.WriteLine($"Read retry reached, please check your connectivity and try again. Error details: {Environment.NewLine}{ex.Message}");
+						if (verbose)
+							Console.WriteLine($"Read retry reached, please check your connectivity and try again. Error details: {Environment.NewLine}{ex.Message}");
 					}
 					else
 					{
