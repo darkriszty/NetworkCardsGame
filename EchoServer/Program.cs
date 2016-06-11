@@ -97,13 +97,14 @@ namespace EchoServer
 						if (line == null)
 							break;
 
-						ProcessPossibleCommand(client, line);
+						bool commandFound = ProcessPossibleCommand(client, line);
 
 						string userName = _clients[client];
 						Console.WriteLine($"{userName}: {line}");
 
 						// echo back
-						await _writer.WriteLineAsync(stream, line);
+						if (!commandFound)
+							await _writer.WriteLineAsync(stream, line);
 					}
 				}
 			}
@@ -117,13 +118,16 @@ namespace EchoServer
 			}
 		}
 
-		private static void ProcessPossibleCommand(TcpClient client, string line)
+		private static bool ProcessPossibleCommand(TcpClient client, string line)
 		{
 			if (line.StartsWith(CommunicationFormats.SetUserName))
 			{
 				string userName = line.Substring(CommunicationFormats.SetUserName.Length);
 				_clients.AddOrUpdate(client, userName, (k, v) => userName);
+				return true;
 			}
+
+			return false;
 		}
 	}
 }
