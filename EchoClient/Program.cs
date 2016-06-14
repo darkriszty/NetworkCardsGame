@@ -1,5 +1,5 @@
 ﻿using Shared.TcpCommunication;
-using Shared.TcpProtocol.v1;
+using Shared.CommunicationProtocol.v1;
 using System;
 using System.Net.Sockets;
 using System.Threading.Tasks;

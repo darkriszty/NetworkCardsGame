@@ -1,15 +1,20 @@
 ﻿using Shared.TcpCommunication;
-using Shared.TcpProtocol.v1;
+using Shared.CommunicationProtocol.v1;
 using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace EchoServer
 {
 	class Program
 	{
+		private const int TCP_PORT = 8080;
+		private const int UDP_PORT = 8081;
+		private static TcpListener _server;
+		private static UdpClient _broadcaster;
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
 		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, 1);
 		private static ConcurrentDictionary<TcpClient, string> _clients = new ConcurrentDictionary<TcpClient, string>(); //TcpClient - username
@@ -23,13 +28,19 @@ namespace EchoServer
 		static async Task MainAsync(string[] args)
 		{
 			Console.WriteLine("Starting server");
-#pragma warning disable CS4014
-			StartServer();
-#pragma warning restore CS4014
-			AcceptCommands();
+			
+			Task broadcasting = BroadcastHearbeatAsync();
+			Task tcpServer = StartServer();
+			Task commandProcessing = AcceptCommands();
+
+			await Task.WhenAll(broadcasting, tcpServer, commandProcessing);
+
+
+			if (_broadcaster != null)
+				_broadcaster.Close();
 		}
 
-		static void AcceptCommands()
+		static async Task AcceptCommands()
 		{
 			string line = null;
 			do
@@ -42,18 +53,16 @@ namespace EchoServer
 
 		static async Task StartServer()
 		{
-			TcpListener server = null;
-
 			try
 			{
-				server = new TcpListener(IPAddress.IPv6Loopback, 8080);
+				_server = new TcpListener(IPAddress.IPv6Loopback, TCP_PORT);
 
 				Console.WriteLine("Starting listener");
-				server.Start();
+				_server.Start();
 
 				while (true)
 				{
-					TcpClient client = await server.AcceptTcpClientAsync();
+					TcpClient client = await _server.AcceptTcpClientAsync();
 
 					_clients.AddOrUpdate(client, string.Empty, (key, oldValue) => string.Empty);
 
@@ -64,11 +73,11 @@ namespace EchoServer
 			}
 			finally
 			{
-				if (server != null)
+				if (_server != null)
 				{
 					try
 					{
-						server.Stop();
+						_server.Stop();
 					}
 					catch (Exception ex)
 					{
@@ -115,6 +124,29 @@ namespace EchoServer
 				string userName;
 				_clients.TryRemove(client, out userName);
 				Console.WriteLine($"{userName} disconnected");
+			}
+		}
+
+		static async Task BroadcastHearbeatAsync()
+		{
+			while (true)
+			{
+				await Task.Delay(3000);
+
+				// wait for the server to be created
+				if (_server == null)
+					continue;
+
+				if (_broadcaster == null)
+					_broadcaster = new UdpClient();
+
+				IPEndPoint ip = new IPEndPoint(IPAddress.Broadcast, UDP_PORT);
+
+				string hearbeatData = CommunicationFormats.ServerHeartbeat + _server.LocalEndpoint.ToString();
+				byte[] bytes = Encoding.ASCII.GetBytes(hearbeatData);
+
+				Console.WriteLine($"Broadcasting '{hearbeatData}'");
+				await _broadcaster.SendAsync(bytes, bytes.Length, ip);
 			}
 		}
 
