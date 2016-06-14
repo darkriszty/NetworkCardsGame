@@ -19,8 +19,17 @@ namespace EchoClient
 
 		private static async Task MainAsync(string[] args)
 		{
-			using (TcpClient client = new TcpClient("::1", 8080))
+			using (TcpClient client = new TcpClient())
 			{
+				try
+				{
+					client.ConnectAsync("localhost", 8080).Wait(3000);
+				}
+				catch (Exception)
+				{
+					Console.WriteLine($"Unable to connect, try again later.");
+					return;
+				}
 				using (NetworkStream stream = client.GetStream())
 				{
 					Console.WriteLine("Username:");
