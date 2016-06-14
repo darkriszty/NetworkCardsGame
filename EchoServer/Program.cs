@@ -27,6 +27,9 @@ namespace EchoServer
 
 		static async Task MainAsync(string[] args)
 		{
+			// for testing automatic client connection via broadcast feature
+			await Task.Delay(2000);
+			
 			Console.WriteLine("Starting server");
 			
 			Task broadcasting = BroadcastHearbeatAsync();
@@ -55,7 +58,7 @@ namespace EchoServer
 		{
 			try
 			{
-				_server = new TcpListener(IPAddress.IPv6Loopback, TCP_PORT);
+				_server = new TcpListener(IPAddress.Loopback, TCP_PORT);
 
 				Console.WriteLine("Starting listener");
 				_server.Start();
