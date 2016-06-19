@@ -5,6 +5,8 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Net;
 using System.Text;
+using System.Diagnostics;
+using Shared.Diagnostics;
 
 namespace EchoClient
 {
@@ -15,6 +17,7 @@ namespace EchoClient
 		private static volatile bool _isConnected = false;
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
 		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, Constants.ReadRetryDelaySeconds);
+		private static TraceSource _trace = TraceSourceFactory.GetDefaultTraceSource();
 
 		static void Main(string[] args)
 		{
@@ -44,18 +47,18 @@ namespace EchoClient
 				}
 				catch (Exception)
 				{
-					Console.WriteLine($"Unable to connect, try again later.");
+					_trace.TraceWarning($"Unable to connect, try again later.");
 					_isConnected = false;
 					return;
 				}
 				using (NetworkStream stream = client.GetStream())
 				{
-					Console.WriteLine("Username:");
+					_trace.TraceInformation("Username:");
 					string userName = Console.ReadLine();
 					string userNameCommand = string.Concat(CommunicationFormats.SetUserName, userName);
 					if (!await _writer.WriteLineAsync(stream, userNameCommand))
 					{
-						Console.WriteLine("Failed to send username to server, stopping.");
+						_trace.TraceError("Failed to send username to server, stopping.");
 						_isConnected = false;
 						return;
 					}
@@ -63,7 +66,7 @@ namespace EchoClient
 					while (true)
 					{
 						// read the data to send to the server
-						Console.WriteLine("What to send?");
+						_trace.TraceInformation("What to send?");
 						string line = Console.ReadLine();
 
 						// send the text to the server
@@ -75,7 +78,7 @@ namespace EchoClient
 						if (response == null)
 							break;
 
-						Console.WriteLine($"Response from server {response}");
+						_trace.TraceVerbose($"Response from server {response}");
 					}
 				}
 			}
@@ -97,7 +100,7 @@ namespace EchoClient
 
 				UdpReceiveResult udp = await _listener.ReceiveAsync();
 				string broadcastData = Encoding.ASCII.GetString(udp.Buffer);
-				Console.WriteLine($"Received broadcast '{broadcastData}'");
+				_trace.TraceVerbose($"Received broadcast '{broadcastData}'");
 				if (broadcastData.StartsWith(CommunicationFormats.ServerHeartbeat))
 				{
 					string ipAndPort = broadcastData.Substring(CommunicationFormats.ServerHeartbeat.Length);
@@ -112,7 +115,7 @@ namespace EchoClient
 						int portNum;
 						if (!string.IsNullOrWhiteSpace(ip) && !string.IsNullOrWhiteSpace(port)&& int.TryParse(port, out portNum))
 						{
-							Console.WriteLine("Server detected, trying to connect...");
+							_trace.TraceVerbose("Server detected, trying to connect...");
 							StartTcpClient(ip, portNum);
 						}
 					}

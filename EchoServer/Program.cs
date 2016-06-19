@@ -1,6 +1,8 @@
 ﻿using Shared.CommunicationProtocol.v1;
+using Shared.Diagnostics;
 using Shared.TcpCommunication;
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,6 +19,7 @@ namespace EchoServer
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
 		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, 1);
 		private static ClientStore _clientStore = new ClientStore();
+		private static TraceSource _trace = TraceSourceFactory.GetDefaultTraceSource();
 
 		static void Main(string[] args)
 		{
@@ -28,8 +31,7 @@ namespace EchoServer
 		{
 			// for testing automatic client connection via broadcast feature
 			await Task.Delay(2000);
-			
-			Console.WriteLine("Starting server");
+			_trace.TraceInformation("Starting server");
 			
 			Task broadcasting = BroadcastHearbeatAsync();
 			Task tcpServer = StartServer();
@@ -47,9 +49,9 @@ namespace EchoServer
 			string line = null;
 			do
 			{
-				Console.WriteLine("Awaiting commands");
+				_trace.TraceInformation("Awaiting commands");
 				line = Console.ReadLine();
-				Console.WriteLine($"Command: {line}");
+				_trace.TraceInformation($"Command: {line}");
 			} while (line != "exit");
 		}
 
@@ -59,7 +61,7 @@ namespace EchoServer
 			{
 				_server = new TcpListener(IPAddress.Loopback, TCP_PORT);
 
-				Console.WriteLine("Starting listener");
+				_trace.TraceInformation("Starting listener");
 				_server.Start();
 
 				while (true)
@@ -83,7 +85,7 @@ namespace EchoServer
 					}
 					catch (Exception ex)
 					{
-						Console.WriteLine($"Failed to stop server{Environment.NewLine}{ex}");
+						_trace.TraceError($"Failed to stop server{Environment.NewLine}{ex}");
 					}
 				}
 			}
@@ -91,7 +93,7 @@ namespace EchoServer
 
 		static async Task HandleConnection(TcpClient client)
 		{
-			Console.WriteLine($"New connection from {client.Client.RemoteEndPoint}");
+			_trace.TraceInformation($"New connection from {client.Client.RemoteEndPoint}");
 			client.ReceiveTimeout = 30;
 			client.SendTimeout = 30;
 
@@ -111,7 +113,7 @@ namespace EchoServer
 						bool commandFound = ProcessPossibleCommand(client, line);
 
 						string userName = _clientStore.GetUserName(client);
-						Console.WriteLine($"{userName}: {line}");
+						_trace.TraceInformation($"{userName}: {line}");
 
 						// echo back
 						if (!commandFound)
@@ -121,10 +123,10 @@ namespace EchoServer
 			}
 			finally
 			{
-				Console.WriteLine("Client connection closed");
+				_trace.TraceVerbose("Client connection closed");
 				client.Close();
 				string userName = _clientStore.RemoveClient(client);
-				Console.WriteLine($"{userName} disconnected");
+				_trace.TraceInformation($"{userName} disconnected");
 			}
 		}
 
@@ -146,7 +148,7 @@ namespace EchoServer
 				string hearbeatData = CommunicationFormats.ServerHeartbeat + _server.LocalEndpoint.ToString();
 				byte[] bytes = Encoding.ASCII.GetBytes(hearbeatData);
 
-				Console.WriteLine($"Broadcasting '{hearbeatData}'");
+				_trace.TraceVerbose($"Broadcasting '{hearbeatData}'");
 				await _broadcaster.SendAsync(bytes, bytes.Length, ip);
 			}
 		}

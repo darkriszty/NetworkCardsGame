@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Shared.Diagnostics;
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading.Tasks;
@@ -9,6 +11,7 @@ namespace Shared.TcpCommunication
 	{
 		private readonly int _maxReadRetry;
 		private readonly int _readRetryDelaySeconds;
+		private readonly TraceSource _trace = TraceSourceFactory.GetDefaultTraceSource();
 
 		public NetworkStreamReader(int maxReadRetry, int readRetryDelaySeconds)
 		{
@@ -34,11 +37,11 @@ namespace Shared.TcpCommunication
 				catch (Exception ex)
 				{
 					if (verbose)
-						Console.WriteLine($"Failed to read data from stream, try {readTry} / {_maxReadRetry}");
+						_trace.TraceWarning($"Failed to read data from stream, try {readTry} / {_maxReadRetry}");
 					if (!readSuccessfully && readTry == _maxReadRetry)
 					{
 						if (verbose)
-							Console.WriteLine($"Read retry reached, please check your connectivity and try again. Error details: {Environment.NewLine}{ex.Message}");
+							_trace.TraceError($"Read retry reached, please check your connectivity and try again. Error details: {Environment.NewLine}{ex.Message}");
 					}
 					else
 					{

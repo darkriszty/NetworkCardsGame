@@ -40,6 +40,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Diagnostics\ColorCodedTraceListener.cs" />
+    <Compile Include="Diagnostics\TraceSourceExtensions.cs" />
+    <Compile Include="Diagnostics\TraceSourceFactory.cs" />
     <Compile Include="TcpCommunication\Constants.cs" />
     <Compile Include="TcpCommunication\NetworkStreamReader.cs" />
     <Compile Include="TcpCommunication\NetworkStreamWriter.cs" />
