@@ -1,7 +1,6 @@
-﻿using Shared.TcpCommunication;
-using Shared.CommunicationProtocol.v1;
+﻿using Shared.CommunicationProtocol.v1;
+using Shared.TcpCommunication;
 using System;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -17,7 +16,7 @@ namespace EchoServer
 		private static UdpClient _broadcaster;
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
 		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, 1);
-		private static ConcurrentDictionary<TcpClient, string> _clients = new ConcurrentDictionary<TcpClient, string>(); //TcpClient - username
+		private static ClientStore _clientStore = new ClientStore();
 
 		static void Main(string[] args)
 		{
@@ -67,7 +66,7 @@ namespace EchoServer
 				{
 					TcpClient client = await _server.AcceptTcpClientAsync();
 
-					_clients.AddOrUpdate(client, string.Empty, (key, oldValue) => string.Empty);
+					_clientStore.AddInitialClient(client);
 
 #pragma warning disable CS4014
 					Task.Factory.StartNew(() => HandleConnection(client));
@@ -111,7 +110,7 @@ namespace EchoServer
 
 						bool commandFound = ProcessPossibleCommand(client, line);
 
-						string userName = _clients[client];
+						string userName = _clientStore.GetUserName(client);
 						Console.WriteLine($"{userName}: {line}");
 
 						// echo back
@@ -124,8 +123,7 @@ namespace EchoServer
 			{
 				Console.WriteLine("Client connection closed");
 				client.Close();
-				string userName;
-				_clients.TryRemove(client, out userName);
+				string userName = _clientStore.RemoveClient(client);
 				Console.WriteLine($"{userName} disconnected");
 			}
 		}
@@ -158,7 +156,7 @@ namespace EchoServer
 			if (line.StartsWith(CommunicationFormats.SetUserName))
 			{
 				string userName = line.Substring(CommunicationFormats.SetUserName.Length);
-				_clients.AddOrUpdate(client, userName, (k, v) => userName);
+				_clientStore.SetUserName(client, userName);
 				return true;
 			}
 
