@@ -28,7 +28,7 @@ namespace EchoServer.Controllers
 				while (true)
 				{
 					_trace.TraceInformation("Awaiting commands");
-					line = Console.ReadLine();
+					await Task.Run(() => { line = Console.ReadLine(); });
 					_trace.TraceInformation($"Command: {line}");
 
 					if (line == "exit")

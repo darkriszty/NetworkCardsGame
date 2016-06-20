@@ -4,7 +4,6 @@ using Shared.Diagnostics;
 using Shared.TcpCommunication;
 using System;
 using System.Diagnostics;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,31 +12,31 @@ namespace EchoServer.Controllers
 {
 	internal class TcpServerController : IController
 	{
-		private const int TCP_PORT = 8080;
-		private TcpListener _server;
-		private NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
-		private NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, 1);
-		private ClientStore _clientStore = new ClientStore();
-		private TraceSource _trace;
+		private readonly TcpListener _server;
+		private readonly TraceSource _trace;
+		private readonly ClientStore _clientStore;
+		private readonly NetworkStreamWriter _writer;
+		private readonly NetworkStreamReader _reader;
 
-		public TcpServerController(TraceSource trace, ClientStore clientStore, NetworkStreamReader reader, NetworkStreamWriter writer)
+		public TcpServerController(TcpListener server, TraceSource trace, ClientStore clientStore, NetworkStreamReader reader, NetworkStreamWriter writer)
 		{
+			if (server == null) throw new ArgumentNullException(nameof(server));
 			if (trace == null) throw new ArgumentNullException(nameof(trace));
+			if (clientStore == null) throw new ArgumentNullException(nameof(clientStore));
+			if (reader == null) throw new ArgumentNullException(nameof(reader));
+			if (writer == null) throw new ArgumentNullException(nameof(writer));
 
+			_server = server;
 			_trace = trace;
+			_clientStore = clientStore;
+			_reader = reader;
+			_writer = writer;
 		}
 
 		public async Task RunAsync(CancellationToken cancellationToken)
 		{
 			try
 			{
-				_server = new TcpListener(IPAddress.Loopback, TCP_PORT);
-
-				_trace.TraceInformation("Starting listener");
-				_server.Start();
-
-				Task broadcasting = new HeartbeatController(_server.LocalEndpoint.ToString(), TraceSourceFactory.GetDefaultTraceSource()).RunAsync(cancellationToken);
-
 				while (true)
 				{
 					TcpClient client = await _server.AcceptTcpClientAsync();
