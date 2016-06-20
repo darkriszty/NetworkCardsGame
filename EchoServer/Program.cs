@@ -6,7 +6,6 @@ using System;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,24 +32,16 @@ namespace EchoServer
 			await Task.Delay(2000);
 			_trace.TraceInformation("Starting server");
 
-			Task tcpServer = StartServer();
-			Task commandProcessing = AcceptCommands();
+			CancellationTokenSource cts = new CancellationTokenSource();
+			CancellationToken cancellationToken = cts.Token;
 
-			await Task.WhenAll(tcpServer, commandProcessing);
+			Task tcpServer = StartServer(cancellationToken);
+			Task commandProcessing = new CommandProcessingController(TraceSourceFactory.GetDefaultTraceSource()).RunAsync(cancellationToken);
+
+			await Task.WhenAny(tcpServer, commandProcessing);
 		}
 
-		static async Task AcceptCommands()
-		{
-			string line = null;
-			do
-			{
-				_trace.TraceInformation("Awaiting commands");
-				line = Console.ReadLine();
-				_trace.TraceInformation($"Command: {line}");
-			} while (line != "exit");
-		}
-
-		static async Task StartServer()
+		static async Task StartServer(CancellationToken cancellationToken)
 		{
 			try
 			{
@@ -58,9 +49,6 @@ namespace EchoServer
 
 				_trace.TraceInformation("Starting listener");
 				_server.Start();
-
-				CancellationTokenSource cts = new CancellationTokenSource();
-				CancellationToken cancellationToken = cts.Token;
 
 				Task broadcasting = new HeartbeatController(_server.LocalEndpoint.ToString(), TraceSourceFactory.GetDefaultTraceSource()).RunAsync(cancellationToken);
 
