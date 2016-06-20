@@ -1,4 +1,5 @@
-﻿using Shared.CommunicationProtocol.v1;
+﻿using EchoServer.Controllers;
+using Shared.CommunicationProtocol.v1;
 using Shared.Diagnostics;
 using Shared.TcpCommunication;
 using System;
@@ -6,6 +7,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EchoServer
@@ -13,9 +15,7 @@ namespace EchoServer
 	class Program
 	{
 		private const int TCP_PORT = 8080;
-		private const int UDP_PORT = 8081;
 		private static TcpListener _server;
-		private static UdpClient _broadcaster;
 		private static NetworkStreamWriter _writer = new NetworkStreamWriter(Constants.MaxWriteRetry, Constants.WriteRetryDelaySeconds);
 		private static NetworkStreamReader _reader = new NetworkStreamReader(Constants.MaxReadRetry, 1);
 		private static ClientStore _clientStore = new ClientStore();
@@ -32,16 +32,11 @@ namespace EchoServer
 			// for testing automatic client connection via broadcast feature
 			await Task.Delay(2000);
 			_trace.TraceInformation("Starting server");
-			
-			Task broadcasting = BroadcastHearbeatAsync();
+
 			Task tcpServer = StartServer();
 			Task commandProcessing = AcceptCommands();
 
-			await Task.WhenAll(broadcasting, tcpServer, commandProcessing);
-
-
-			if (_broadcaster != null)
-				_broadcaster.Close();
+			await Task.WhenAll(tcpServer, commandProcessing);
 		}
 
 		static async Task AcceptCommands()
@@ -63,6 +58,11 @@ namespace EchoServer
 
 				_trace.TraceInformation("Starting listener");
 				_server.Start();
+
+				CancellationTokenSource cts = new CancellationTokenSource();
+				CancellationToken cancellationToken = cts.Token;
+
+				Task broadcasting = new HeartbeatController(_server.LocalEndpoint.ToString(), TraceSourceFactory.GetDefaultTraceSource()).RunAsync(cancellationToken);
 
 				while (true)
 				{
@@ -127,29 +127,6 @@ namespace EchoServer
 				client.Close();
 				string userName = _clientStore.RemoveClient(client);
 				_trace.TraceInformation($"{userName} disconnected");
-			}
-		}
-
-		static async Task BroadcastHearbeatAsync()
-		{
-			while (true)
-			{
-				await Task.Delay(3000);
-
-				// wait for the server to be created
-				if (_server == null)
-					continue;
-
-				if (_broadcaster == null)
-					_broadcaster = new UdpClient();
-
-				IPEndPoint ip = new IPEndPoint(IPAddress.Broadcast, UDP_PORT);
-
-				string hearbeatData = CommunicationFormats.ServerHeartbeat + _server.LocalEndpoint.ToString();
-				byte[] bytes = Encoding.ASCII.GetBytes(hearbeatData);
-
-				_trace.TraceVerbose($"Broadcasting '{hearbeatData}'");
-				await _broadcaster.SendAsync(bytes, bytes.Length, ip);
 			}
 		}
 
