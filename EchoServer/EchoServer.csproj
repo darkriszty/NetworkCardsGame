@@ -47,6 +47,8 @@
     <Compile Include="Controllers\CommandProcessingController.cs" />
     <Compile Include="Controllers\HeartbeatController.cs" />
     <Compile Include="Controllers\MainController.cs" />
+    <Compile Include="Controllers\TcpServerController.cs" />
+    <Compile Include="Controllers\TcpServerControllerFactory.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
